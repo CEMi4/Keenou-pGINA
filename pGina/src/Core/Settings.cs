@@ -71,7 +71,7 @@ namespace pGina.Core
 			s_settings.SetDefault("14EFCEF3-4D67-44C6-9F28-BB80F1A33827", 
                 (int) (Core.PluginLoader.State.GatewayEnabled));
             s_settings.SetDefault("12FA152D-A2E3-4C8D-9535-5DCD49DFCB6D", 
-                (int) (Core.PluginLoader.State.AuthenticateEnabled | Core.PluginLoader.State.GatewayEnabled));
+                (int) (Core.PluginLoader.State.AuthenticateEnabled | Core.PluginLoader.State.AuthorizeEnabled | Core.PluginLoader.State.GatewayEnabled));
 
             s_settings.SetDefault("UseOriginalUsernameInUnlockScenario", false);
             s_settings.SetDefault("LogonProgressMessage", "Logging on %u...");
