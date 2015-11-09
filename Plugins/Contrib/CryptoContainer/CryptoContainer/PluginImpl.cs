@@ -9,6 +9,7 @@ using System.Diagnostics;
 using System.IO;
 using log4net;
 using System.Text.RegularExpressions;
+using System.Security.Cryptography;
 
 namespace pGina.Plugin.CryptoContainer
 {
@@ -50,6 +51,19 @@ namespace pGina.Plugin.CryptoContainer
         public void Stopping() { }
 
 
+
+        // Get SHA-512 signature from input text //
+        public static string SHA512_Base64(string input)
+        {
+            using (SHA512 alg = SHA512.Create())
+            {
+                byte[] result = alg.ComputeHash(Encoding.UTF8.GetBytes(input));
+                return Convert.ToBase64String(result);
+            }
+        }
+        // * //
+
+
         public BooleanResult AuthenticatedUserGateway(SessionProperties properties)
         {
 
@@ -74,9 +88,14 @@ namespace pGina.Plugin.CryptoContainer
 
 
 
-            // TEST
-            //Registry.SetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\Keenou\" + sidString, "encContainerLoc", @"C:\Users\jetwhiz\Desktop\VeraCrypt\test.hc");
-            //Registry.SetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\Keenou\" + sidString, "firstBoot", true);
+            // Figure out the hash used for crypto container //
+            string hashChosen = (string)Registry.GetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\Keenou\" + sidString, "hash", "whirlpool");
+            if (string.IsNullOrEmpty(hashChosen))
+            {
+                return new BooleanResult() { Success = false, Message = "Cannot find user's hash algorithm in registry." };
+            }
+            m_logger.InfoFormat("Hash algorithm: {0}", hashChosen);
+            // * //
 
 
 
@@ -148,7 +167,6 @@ namespace pGina.Plugin.CryptoContainer
 
                 // GET VeraCrypt DIRECTORY
                 string programDir = (Environment.GetEnvironmentVariable("PROGRAMFILES(X86)") ?? Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles)) + @"\VeraCrypt\";
-                //programDir = @"C:\Users\jetwhiz\Desktop\VeraCrypt\";
                 m_logger.InfoFormat("Location of Veracrypt executables: {0}", programDir);
 
 
@@ -167,7 +185,7 @@ namespace pGina.Plugin.CryptoContainer
 
                     startInfo.WindowStyle = ProcessWindowStyle.Hidden;
                     startInfo.FileName = "cmd.exe";
-                    startInfo.Arguments = "/C \"\"" + programDir + "VeraCrypt.exe\" /hash whirlpool /v \"" + encContainerLoc + "\" /l " + targetDrive + " /f /h n /p \"" + userInfo.Password + "\" /q /s\"";
+                    startInfo.Arguments = "/C \"\"" + programDir + "VeraCrypt.exe\" /hash " + hashChosen + " /v \"" + encContainerLoc + "\" /l " + targetDrive + " /f /h n /p \"" + SHA512_Base64(userInfo.Password) + "\" /q /s\"";
                     process.StartInfo = startInfo;
                     process.Start();
                     process.WaitForExit();
@@ -203,9 +221,6 @@ namespace pGina.Plugin.CryptoContainer
             if (firstBoot)
             {
                 m_logger.InfoFormat("First boot for this user!");
-                //dir /S /A:L
-                //xcopy C:\Users\jetwhiz c:\jetwhiz /s /e /h /d /k /x /c /q
-                //robocopy C:\Users\jetwhiz C:\jetwhiz /MIR /copyall /sl /xj /r:0
 
 
                 // Make sure old location exists (before moving files over to new location) 
@@ -226,9 +241,6 @@ namespace pGina.Plugin.CryptoContainer
                 {
                     startInfo.WindowStyle = ProcessWindowStyle.Hidden;
                     startInfo.FileName = "cmd.exe";
-                    //startInfo.UseShellExecute = false;
-                    //startInfo.CreateNoWindow = true;
-                    //startInfo.RedirectStandardOutput = true;
                     startInfo.Arguments = "/C \"robocopy \"" + homeFolder + "\" " + targetDrive + ":\\ /MIR /copyall /sl /xj /r:0\"";
                     process.StartInfo = startInfo;
                     process.Start(); // this may take a while! 
@@ -240,15 +252,6 @@ namespace pGina.Plugin.CryptoContainer
                         return new BooleanResult() { Success = false, Message = "Error while copying files over!" };
                     }
 
-                    // Ensure no files failed to copy 
-                    /*while (!process.StandardOutput.EndOfStream)
-                    {
-                        string line = process.StandardOutput.ReadLine();
-                        if (line.ToUpper().IndexOf("ERROR") > -1)
-                        {
-                            return new BooleanResult() { Success = false, Message = "Failed to copy all files over!" };
-                        }
-                    }*/
                 }
                 catch (Exception e)
                 {
