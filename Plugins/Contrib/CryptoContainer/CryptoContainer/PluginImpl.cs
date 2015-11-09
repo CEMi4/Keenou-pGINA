@@ -302,6 +302,10 @@ namespace pGina.Plugin.CryptoContainer
                 //Registry.SetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList\" + sidString, "ProfileImagePath", targetDrive + @":\");
 
 
+                // Save where we mounted the encrypted volume 
+                Registry.SetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\Keenou\" + sidString, "encDrive", targetDrive);
+
+
                 // Remove old directory junction (if it's there) 
                 if (Directory.Exists(homeFolder) && !File.Exists(homeFolder + @"\" + "NTUSER.DAT"))
                 {
