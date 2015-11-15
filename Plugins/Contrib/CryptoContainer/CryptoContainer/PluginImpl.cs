@@ -1,19 +1,34 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿/*
+ * Keenou
+ * Copyright (C) 2015  Charles Munson
+ * 
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+*/
+
+using System;
 using pGina.Shared.Types;
 using Microsoft.Win32;
 using System.Security.Principal;
 using System.Diagnostics;
 using System.IO;
 using log4net;
-using System.Text.RegularExpressions;
-using System.Security.Cryptography;
+using Keenou;
 
 namespace pGina.Plugin.CryptoContainer
 {
-    public class PluginImpl : pGina.Shared.Interfaces.IPluginAuthenticationGateway 
+    public class PluginImpl : pGina.Shared.Interfaces.IPluginAuthenticationGateway
     {
         private static readonly Guid m_uuid = new Guid("14EFCEF3-4D67-44C6-9F28-BB80F1A33827");
         private ILog m_logger;
@@ -49,19 +64,6 @@ namespace pGina.Plugin.CryptoContainer
         public void Starting() { }
 
         public void Stopping() { }
-
-
-
-        // Get SHA-512 signature from input text //
-        public static string SHA512_Base64(string input)
-        {
-            using (SHA512 alg = SHA512.Create())
-            {
-                byte[] result = alg.ComputeHash(Encoding.UTF8.GetBytes(input));
-                return Convert.ToBase64String(result);
-            }
-        }
-        // * //
 
 
         public BooleanResult AuthenticatedUserGateway(SessionProperties properties)
@@ -112,6 +114,33 @@ namespace pGina.Plugin.CryptoContainer
                 return new BooleanResult() { Success = true, Message = "User's home folder not encrypted." + homeFolder };
             }
             m_logger.InfoFormat("Encrypted container: {0}", encContainerLoc);
+            // * //
+
+
+
+            // Get and decrypt user's master key (using user password) //
+            string masterKey = null;
+            string encHeader = (string)Registry.GetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\Keenou\" + sidString, "encHeader", null);
+            if (string.IsNullOrEmpty(encHeader))
+            {
+                return new BooleanResult() { Success = false, Message = "User's header information could not be found." };
+            }
+            m_logger.InfoFormat("Encrypted header: {0}", encHeader);
+
+            try
+            {
+                masterKey = AESGCM.SimpleDecryptWithPassword(encHeader, userInfo.Password);
+
+                // Make sure we got a key back 
+                if (masterKey == null)
+                {
+                    throw new Exception("Failed to decrypt master key!");
+                }
+            }
+            catch (Exception err)
+            {
+                return new BooleanResult() { Success = false, Message = "Cannot obtain master key! " + err.Message };
+            }
             // * //
 
 
@@ -177,7 +206,7 @@ namespace pGina.Plugin.CryptoContainer
                 }
 
 
-                // MOUNT ENCRYPTED CONTAINER (TODO: sanitize password?)
+                // MOUNT ENCRYPTED CONTAINER 
                 ProcessStartInfo startInfo = new ProcessStartInfo();
                 try
                 {
@@ -185,7 +214,7 @@ namespace pGina.Plugin.CryptoContainer
 
                     startInfo.WindowStyle = ProcessWindowStyle.Hidden;
                     startInfo.FileName = "cmd.exe";
-                    startInfo.Arguments = "/C \"\"" + programDir + "VeraCrypt.exe\" /hash " + hashChosen + " /v \"" + encContainerLoc + "\" /l " + targetDrive + " /f /h n /p \"" + SHA512_Base64(userInfo.Password) + "\" /q /s\"";
+                    startInfo.Arguments = "/C \"\"" + programDir + "VeraCrypt.exe\" /hash " + hashChosen + " /v \"" + encContainerLoc + "\" /l " + targetDrive + " /f /h n /p \"" + masterKey + "\" /q /s\"";
                     process.StartInfo = startInfo;
                     process.Start();
                     process.WaitForExit();
@@ -268,7 +297,7 @@ namespace pGina.Plugin.CryptoContainer
                 Directory.Move(homeFolder, homeFolder + ".bakup");
 
 
-                
+
                 // Finished -- not firstBoot anymore! 
                 try
                 {

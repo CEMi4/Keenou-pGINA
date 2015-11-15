@@ -34,6 +34,9 @@
     <Reference Include="Abstractions">
       <HintPath>..\..\..\SDK\Abstractions.dll</HintPath>
     </Reference>
+    <Reference Include="BouncyCastle.Crypto">
+      <HintPath>..\..\..\..\..\lib\BouncyCastle\BouncyCastle.Crypto.dll</HintPath>
+    </Reference>
     <Reference Include="log4net">
       <HintPath>..\..\..\SDK\log4net.dll</HintPath>
     </Reference>
@@ -49,6 +52,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="..\..\..\..\..\Keenou\lib\AESGCM.cs">
+      <Link>AESGCM.cs</Link>
+    </Compile>
     <Compile Include="PluginImpl.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
