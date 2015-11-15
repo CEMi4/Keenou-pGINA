@@ -19,3 +19,6 @@ Installer/Output
 
 # Installer pre-processor
 Installer/PreprocessedpGina0.iss
+Installer/nsis/DotNetChecker.nsh
+*.exe
+*.dll
