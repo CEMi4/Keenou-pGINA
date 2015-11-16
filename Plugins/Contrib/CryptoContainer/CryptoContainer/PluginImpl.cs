@@ -195,15 +195,13 @@ namespace pGina.Plugin.CryptoContainer
 
 
                 // GET VeraCrypt DIRECTORY
-                string programDir = (Environment.GetEnvironmentVariable("PROGRAMFILES(X86)") ?? Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles)) + @"\VeraCrypt\";
-                m_logger.InfoFormat("Location of Veracrypt executables: {0}", programDir);
-
-
-                // Make sure veracrypt is installed
-                if (!Directory.Exists(programDir))
+                string programDir = Toolbox.GetSoftwareDirectory("VeraCrypt");
+                if (programDir == null)
                 {
                     return new BooleanResult() { Success = false, Message = "VeraCrypt inaccessible." };
                 }
+                m_logger.InfoFormat("Location of Veracrypt executables: {0}", programDir);
+
 
 
                 // MOUNT ENCRYPTED CONTAINER 

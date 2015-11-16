@@ -45,6 +45,7 @@
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -52,6 +53,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="..\..\..\..\..\Keenou\Keenou\Toolbox.cs">
+      <Link>Toolbox.cs</Link>
+    </Compile>
     <Compile Include="..\..\..\..\..\Keenou\lib\AESGCM.cs">
       <Link>AESGCM.cs</Link>
     </Compile>
