@@ -54,6 +54,15 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="..\..\..\..\..\Keenou\Keenou\BooleanResult.cs">
+      <Link>BooleanResult.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\..\Keenou\Keenou\Config.cs">
+      <Link>Config.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\..\Keenou\Keenou\EncryptDirectory.cs">
+      <Link>EncryptDirectory.cs</Link>
+    </Compile>
     <Compile Include="..\..\..\..\..\Keenou\Keenou\Toolbox.cs">
       <Link>Toolbox.cs</Link>
     </Compile>

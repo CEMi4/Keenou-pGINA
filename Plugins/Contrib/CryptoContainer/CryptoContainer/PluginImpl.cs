@@ -24,7 +24,6 @@ using System.Security.Principal;
 using System.Diagnostics;
 using System.IO;
 using log4net;
-using Keenou;
 
 namespace pGina.Plugin.CryptoContainer
 {
@@ -91,7 +90,7 @@ namespace pGina.Plugin.CryptoContainer
 
 
             // Figure out the hash used for crypto container //
-            string hashChosen = (string)Registry.GetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\Keenou\" + sidString, "hash", "whirlpool");
+            string hashChosen = (string)Registry.GetValue(Keenou.Config.LOCAL_MACHINE_REG_ROOT + sidString, "hash", "whirlpool");
             if (string.IsNullOrEmpty(hashChosen))
             {
                 return new BooleanResult() { Success = false, Message = "Cannot find user's hash algorithm in registry." };
@@ -102,7 +101,7 @@ namespace pGina.Plugin.CryptoContainer
 
 
             // Figure out where the home folder's encrypted file is located for this user //
-            string encContainerLoc = (string)Registry.GetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\Keenou\" + sidString, "encContainerLoc", null);
+            string encContainerLoc = (string)Registry.GetValue(Keenou.Config.LOCAL_MACHINE_REG_ROOT + sidString, "encContainerLoc", null);
             if (string.IsNullOrEmpty(encContainerLoc))
             {
                 // Ensure system-defined home folder actually exists 
@@ -120,7 +119,7 @@ namespace pGina.Plugin.CryptoContainer
 
             // Get and decrypt user's master key (using user password) //
             string masterKey = null;
-            string encHeader = (string)Registry.GetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\Keenou\" + sidString, "encHeader", null);
+            string encHeader = (string)Registry.GetValue(Keenou.Config.LOCAL_MACHINE_REG_ROOT + sidString, "encHeader", null);
             if (string.IsNullOrEmpty(encHeader))
             {
                 return new BooleanResult() { Success = false, Message = "User's header information could not be found." };
@@ -129,7 +128,7 @@ namespace pGina.Plugin.CryptoContainer
 
             try
             {
-                masterKey = AESGCM.SimpleDecryptWithPassword(encHeader, userInfo.Password);
+                masterKey = Keenou.AESGCM.SimpleDecryptWithPassword(encHeader, userInfo.Password);
 
                 // Make sure we got a key back 
                 if (masterKey == null)
@@ -148,7 +147,7 @@ namespace pGina.Plugin.CryptoContainer
             // Determine if this is the first boot (setup/migrate) //
             bool firstBoot = false;
             {
-                object firstBoot_O = Registry.GetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\Keenou\" + sidString, "firstBoot", false);
+                object firstBoot_O = Registry.GetValue(Keenou.Config.LOCAL_MACHINE_REG_ROOT + sidString, "firstBoot", false);
 
                 if (firstBoot_O == null)
                 {
@@ -170,77 +169,25 @@ namespace pGina.Plugin.CryptoContainer
 
 
 
-            // Mount home folder's encrypted file as targetDrive //
-            string targetDrive = null;
-            using (Process process = new Process())
+            // Get next free drive letter // 
+            string targetDrive = Keenou.Toolbox.GetNextFreeDriveLetter();
+            if (targetDrive == null)
             {
-
-                // GET NEXT FREE DRIVE LETTER 
-                char[] alpha = "VTHEDFGIJKLMNOPQRSUWXYZC".ToCharArray();
-                string[] taken = Directory.GetLogicalDrives();
-                foreach (char dL in alpha)
-                {
-                    int pos = Array.IndexOf(taken, dL + @":\");
-                    if (pos == -1)
-                    {
-                        targetDrive = dL.ToString();
-                        break;
-                    }
-                }
-                if (targetDrive == null)
-                {
-                    return new BooleanResult() { Success = false, Message = "Failed to find a free drive letter. " + String.Join(",", taken) };
-                }
-                m_logger.InfoFormat("Free drive letter: {0}", targetDrive);
-
-
-                // GET VeraCrypt DIRECTORY
-                string programDir = Toolbox.GetSoftwareDirectory("VeraCrypt");
-                if (programDir == null)
-                {
-                    return new BooleanResult() { Success = false, Message = "VeraCrypt inaccessible." };
-                }
-                m_logger.InfoFormat("Location of Veracrypt executables: {0}", programDir);
-
-
-
-                // MOUNT ENCRYPTED CONTAINER 
-                ProcessStartInfo startInfo = new ProcessStartInfo();
-                try
-                {
-                    //.\"VeraCrypt Format.exe" /create test.hc /password testing /size 10M /hash whirlpool /encryption AES(Twofish(Serpent)) /filesystem NTFS /force /silent
-
-                    startInfo.WindowStyle = ProcessWindowStyle.Hidden;
-                    startInfo.FileName = "cmd.exe";
-                    startInfo.Arguments = "/C \"\"" + programDir + "VeraCrypt.exe\" /hash " + hashChosen + " /v \"" + encContainerLoc + "\" /l " + targetDrive + " /f /h n /p \"" + masterKey + "\" /q /s\"";
-                    process.StartInfo = startInfo;
-                    process.Start();
-                    process.WaitForExit();
-
-                    // Ensure no errors were thrown 
-                    if (process.ExitCode != 0)
-                    {
-                        return new BooleanResult() { Success = false, Message = "Error while mounting encrypted file!" };
-                    }
-
-                    //m_logger.InfoFormat("CMD Argument: {0}", startInfo.Arguments);
-                }
-                catch (Exception e)
-                {
-                    return new BooleanResult() { Success = false, Message = "Failed to mount encrypted home volume. " + e.Message };
-                }
-
+                return new BooleanResult() { Success = false, Message = "Failed to find a free drive letter." };
             }
+            m_logger.InfoFormat("Free drive letter: {0}", targetDrive);
             // * //
 
 
 
-            // Make sure encrypted system was mounted //
-            if (!Directory.Exists(targetDrive + @":\"))
+            // Mount home drive //
+            Keenou.BooleanResult res = Keenou.EncryptDirectory.MountEncryptedVolume(hashChosen, encContainerLoc, targetDrive, masterKey);
+            if (!res.Success)
             {
-                return new BooleanResult() { Success = false, Message = "Failed to mount encrypted home volume." };
+                return new BooleanResult() { Success = false, Message = res.Message };
             }
             // * //
+
 
 
 
@@ -268,15 +215,15 @@ namespace pGina.Plugin.CryptoContainer
                 {
                     startInfo.WindowStyle = ProcessWindowStyle.Hidden;
                     startInfo.FileName = "cmd.exe";
-                    startInfo.Arguments = "/C \"robocopy \"" + homeFolder + "\" " + targetDrive + ":\\ /MIR /copyall /sl /xj /r:0\"";
+                    startInfo.Arguments = "/C \"robocopy \"" + homeFolder + "\" " + targetDrive + ":\\ /zb /MIR /copyall /sl /xj /r:0\"";
                     process.StartInfo = startInfo;
                     process.Start(); // this may take a while! 
                     process.WaitForExit();
 
                     // Ensure no errors were thrown 
-                    if (process.ExitCode >= 4)
+                    if (process.ExitCode > 7)
                     {
-                        return new BooleanResult() { Success = false, Message = "Error while copying files over!" };
+                        return new BooleanResult() { Success = false, Message = "Error while copying files over! " + process.ExitCode };
                     }
 
                 }
@@ -299,7 +246,7 @@ namespace pGina.Plugin.CryptoContainer
                 // Finished -- not firstBoot anymore! 
                 try
                 {
-                    Registry.SetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\Keenou\" + sidString, "firstBoot", false, RegistryValueKind.DWord);
+                    Registry.SetValue(Keenou.Config.LOCAL_MACHINE_REG_ROOT + sidString, "firstBoot", false, RegistryValueKind.DWord);
                 }
                 catch (Exception e)
                 {
@@ -330,7 +277,7 @@ namespace pGina.Plugin.CryptoContainer
 
 
                 // Save where we mounted the encrypted volume 
-                Registry.SetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\Keenou\" + sidString, "encDrive", targetDrive);
+                Registry.SetValue(Keenou.Config.LOCAL_MACHINE_REG_ROOT + sidString, "encDrive", targetDrive);
 
 
                 // Remove old directory junction (if it's there) 

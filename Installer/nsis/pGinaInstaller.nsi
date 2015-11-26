@@ -8,7 +8,7 @@
 !include DotNetChecker.nsh
 !include MUI2.nsh
 
-!define APPNAME "pGina"
+!define APPNAME "Keenou-pGina"
 !define VERSION "3.2.4.1"
 
 RequestExecutionLevel admin  ; Require admin rights
@@ -24,8 +24,8 @@ OutFile "pGina-${VERSION}-setup.exe" ; Output file
 !define MUI_COMPONENTSPAGE_SMALLDESC
 
 # Installer pages
-!define MUI_PAGE_HEADER_TEXT "Install pGina ${VERSION}"
-!define MUI_WELCOMEPAGE_TITLE "Install pGina ${VERSION}"
+!define MUI_PAGE_HEADER_TEXT "Install Keenou-pGina ${VERSION}"
+!define MUI_WELCOMEPAGE_TITLE "Install Keenou-pGina ${VERSION}"
 !insertmacro MUI_PAGE_WELCOME 
 !insertmacro MUI_PAGE_LICENSE ..\..\LICENSE
 !insertmacro MUI_PAGE_DIRECTORY 
@@ -45,9 +45,9 @@ OutFile "pGina-${VERSION}-setup.exe" ; Output file
 !insertmacro MUI_LANGUAGE "English"
 
 VIAddVersionKey /LANG=${LANG_ENGLISH} "ProductName" "${APPNAME} Setup"
-VIAddVersionKey /LANG=${LANG_ENGLISH} "CompanyName" "pGina Team"
-VIAddVersionKey /LANG=${LANG_ENGLISH} "FileDescription" "pGina installer"
-VIAddVersionKey /LANG=${LANG_ENGLISH} "LegalCopyright" "2014 pGina Team"
+VIAddVersionKey /LANG=${LANG_ENGLISH} "CompanyName" "CEMi4, LLC."
+VIAddVersionKey /LANG=${LANG_ENGLISH} "FileDescription" "Keenou-pGina installer"
+VIAddVersionKey /LANG=${LANG_ENGLISH} "LegalCopyright" "2015 CEMi4, LLC., pGina Team"
 VIAddVersionKey /LANG=${LANG_ENGLISH} "FileVersion" ${VERSION} 
 VIProductVersion ${VERSION}
 
